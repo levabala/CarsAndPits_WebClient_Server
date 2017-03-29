@@ -299,7 +299,7 @@
             var track = JSON.parse(xhr.responseText);          
             makeJsonFloatAgain(track);
             console.log(track)
-            drawRoute(track);
+            setupRoute(track);
             loadOff();
           }                            
         }
@@ -315,163 +315,38 @@
         return a;
       }
     </script>
-    <script>     
-      makeJsonFloatAgain(trackJson)
-
+    <script>           
       var map;      
+      var zoomLayers = []; //from 0 to 20
        
       function initMap() {
         map = new google.maps.Map(document.getElementById('map'), {
           zoom: 15,
           center: {lat: 56.7371593, lng: 37.163207},
           mapTypeId: 'satellite'
-        });        
-        
-        google.maps.event.addListener(map, 'idle', function(){
+        });    
+
+        listenForIdleOnce();                  
+      }
+
+
+      function setupRoute(track){
+        if (track.length < 2) return;
+
+
+      }
+
+      function listenForIdleOnce(){
+        google.maps.event.addListenerOnce(map, 'idle', function(){
           console.warn('idle')
           loadOff();          
         });
-    }
-
-    function moveToLocation(lat, lng){
-        var center = new google.maps.LatLng(lat, lng);        
-        map.panTo(center);
-    }      
-
-
-      //----------------------------- Constants -----------------------------
-      var ACCELERATION_LIMIT_X = 2;
-      var ACCELERATION_LIMIT_Y = 4;
-      var ACCELERATION_LIMIT_Z = 6;
-      var MINIMAL_DISTANCE = 40;
-
-      var latArr = [];
-      var lngArr = [];
-
-      function drawRoute(trackJson){
-        if (circles){
-          for (var c in circles)
-            circles[c].setMap(null);
-          circles = [];
-        }
-
-        if (trackJson.length < 3) return;        
-
-        loadOn();
-
-        var distances = []; 
-        var path = [trackJson[0].position];
-        var circles = [];
-        var maxAcceleration = 0;     
-        console.log('Total apprx length:', trackJson[1].accelerations.X.length * trackJson.length)  
-        var maxDistance = 0;
-        for (var t = 0; t < trackJson.length-1; t++){
-          var next = trackJson[t+1];
-          path.push(next.position);
-          var current = trackJson[t];
-          var stepx = (next.position.lat - current.position.lat) / next.accelerations.X.length; 
-          var stepy = (next.position.lng - current.position.lng) / next.accelerations.X.length; //not mistake here
-
-          var currDist = measure(current.position.lat,current.position.lng,next.position.lat,next.position.lng);
-          distances.push(currDist)          
-          
-          if (currDist > maxDistance) maxDistance = currDist;
-          //console.log(current,next,stepx,stepy)
-          
-          var count = 0;
-          var bufferedAccelerationX = bufferedAccelerationY = bufferedAccelerationZ = 0;
-          var distance = 0;
-          var lastPosition = {lat: current.position.lat, lng: current.position.lng};                    
-          for (var i in next.accelerations.X){            
-            var lat = current.position.lat + stepx * i;
-            var lng = current.position.lng + stepy * i;
-            
-            if (next.accelerations.X[i] > ACCELERATION_LIMIT_X){
-              var circleX = new google.maps.Circle(createCircle(lat,lng,next.accelerations.X[i],'red'));              
-              //circleX.setMap(null);
-              circles.push(circleX);
-            }
-            if (next.accelerations.Y[i] > ACCELERATION_LIMIT_Y){
-              var circleY = new google.maps.Circle(createCircle(lat,lng,next.accelerations.Y[i],'green'));
-              //circleY.setMap(null);
-              circles.push(circleY);
-            }
-            if (next.accelerations.Z[i] > ACCELERATION_LIMIT_Z){
-              var circleZ = new google.maps.Circle(createCircle(lat,lng,next.accelerations.Z[i],'yellow'));                      
-              //circleZ.setMap(null);
-              circles.push(circleZ);
-            }
-            /*distance += measure(lastPosition.lat,lastPosition.lng,lat,lng);;
-            bufferedAccelerationX += next.accelerations.X[i];
-            bufferedAccelerationY += next.accelerations.Y[i];
-            bufferedAccelerationZ += next.accelerations.Z[i];            
-            count++;            
-
-            if ((next.accelerations.X[i] < ACCELERATION_LIMIT &&
-                 next.accelerations.Y[i] < ACCELERATION_LIMIT &&
-                 next.accelerations.Z[i] < ACCELERATION_LIMIT && distance >= MINIMAL_DISTANCE)){
-              //console.log('Circle!');
-              var bufferedAccelerationTotal = bufferedAccelerationX + bufferedAccelerationY + bufferedAccelerationZ;
-              if (bufferedAccelerationTotal / count > maxAcceleration) maxAcceleration = bufferedAccelerationTotal / count;
-
-              var averageAccelerationX = bufferedAccelerationX / count;              
-              var averageAccelerationY = bufferedAccelerationY / count; 
-              var averageAccelerationZ = bufferedAccelerationZ / count; 
-              
-              var circleX = new google.maps.Circle(createCircle(lat,lng,averageAccelerationX,'red'));
-              var circleY = new google.maps.Circle(createCircle(lat,lng,averageAccelerationY,'green'));
-              var circleZ = new google.maps.Circle(createCircle(lat,lng,averageAccelerationZ,'yellow'));
-              circles.push(circleX);
-              circles.push(circleY);
-              circles.push(circleZ);
-
-              distance = 0;
-              lastPosition.lat = lat;
-              lastPosition.lng = lng;
-              count = 0;
-              bufferedAcceleration = 0;
-            }*/
-          }          
-        }
-
-        function addCircle(){
-          
-        }
-
-        var roadPath = new google.maps.Polyline({
-          path: path,
-          geodesic: true,
-          strokeColor: '#FF0000',
-          strokeOpacity: 0.5,
-          strokeWeight: 4
-        });
-        roadPath.setMap(map);
-
-        console.log("maxAcceleration:",maxAcceleration)    
-        console.log("maxDistance:",maxDistance)  
-        console.log("Circles count:",circles.length)
-
-        moveToLocation(trackJson[0].position.lat,trackJson[0].position.lng);
-
-        google.maps.event.addListenerOnce(map, 'tilesloaded', function(){
-          console.warn('tilesloaded')
-          loadOff();          
-        });
       }
 
-      var maxAccDelta = 120;
-      function createCircle(lat,lng,accDelta,color) {
-        return {
-          center: {lat: lat, lng: lng},
-          fillColor: color,
-          //fillOpacity: accDelta / maxAccDelta,
-          radius: accDelta,
-          scale: 1,//Math.pow(2, magnitude) / 2,
-          strokeColor: 'white',
-          strokeWeight: .2,
-          map: map
-        };
-      }
+      function moveToLocation(lat, lng){
+          var center = new google.maps.LatLng(lat, lng);        
+          map.panTo(center);
+      }     
 
       function makeJsonFloatAgain(json){
         for (var a in json){
@@ -497,6 +372,16 @@
         var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         var d = R * c;
         return d * 1000; // meters
+      }
+    </script>
+
+    <!-- Some classes -->
+    <script>
+      function Route(track){
+        var route = this;
+        this.track = track;
+        this.zoomLayers = []; //from 0 to 20
+        
       }
     </script>
     <script async defer

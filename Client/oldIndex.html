@@ -388,17 +388,17 @@
             
             if (next.accelerations.X[i] > ACCELERATION_LIMIT_X){
               var circleX = new google.maps.Circle(createCircle(lat,lng,next.accelerations.X[i],'red'));              
-              //circleX.setMap(null);
+              circleX.setMap(null);
               circles.push(circleX);
             }
             if (next.accelerations.Y[i] > ACCELERATION_LIMIT_Y){
               var circleY = new google.maps.Circle(createCircle(lat,lng,next.accelerations.Y[i],'green'));
-              //circleY.setMap(null);
+              circleY.setMap(null);
               circles.push(circleY);
             }
             if (next.accelerations.Z[i] > ACCELERATION_LIMIT_Z){
               var circleZ = new google.maps.Circle(createCircle(lat,lng,next.accelerations.Z[i],'yellow'));                      
-              //circleZ.setMap(null);
+              circleZ.setMap(null);
               circles.push(circleZ);
             }
             /*distance += measure(lastPosition.lat,lastPosition.lng,lat,lng);;

@@ -10,12 +10,18 @@ var fs = require("fs");
 var port = 3000;
 
 var clientPage = "";
+var developPage = "";
 
 function updateHtml(){
     fs.readFile('../Client/index.html', function (err, html) {
         if (err) 
             throw err;             
         clientPage = html;
+    });
+    fs.readFile('../Client/developIndex.html', function (err, html) {
+        if (err) 
+            throw err;             
+        developPage = html;
     });
 }
 
@@ -67,6 +73,12 @@ var server = http.createServer(function (req, res) {
                     str += files[f] + '|' + (fs.statSync('./Tracks/' + files[f]).size / 1000000).toFixed(1) + 'MB ';
                 res.end(str) 
             })
+            break;
+        }
+        case '/developPage': {
+            res.writeHeader(200, {"Content-Type": "text/html"});  
+            res.write(developPage);  
+            res.end();  
             break;
         }
         default: {            
