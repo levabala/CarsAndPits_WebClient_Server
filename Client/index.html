@@ -31,6 +31,7 @@
           box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
           right: 0;
           z-index: 1;
+          white-space: nowrap;
       }
 
       .dropdown-content a {
@@ -218,6 +219,7 @@
       </div>
     </div>
     </div>
+
     <!-- Interface script -->
     <script>      
       var tracklistDom = document.getElementById("myDropdown");
@@ -283,7 +285,7 @@
 
       function requestTrack(trackName){
         xhr = new XMLHttpRequest();
-
+        console.log(trackName,trackName.split('|')[0])
         xhr.open('GET', '/getTrack?trackName='+trackName.split('|')[0], false);
         
 
@@ -312,6 +314,7 @@
         a.setAttribute('onclick','requestTrack(this.innerHTML)');
         a.setAttribute('style','cursor: pointer');
         a.innerHTML = trackName;
+        console.log(trackName)
         return a;
       }
     </script>
@@ -340,9 +343,10 @@
 
 
       //----------------------------- Constants -----------------------------
-      var ACCELERATION_LIMIT_X = 2;
-      var ACCELERATION_LIMIT_Y = 4;
-      var ACCELERATION_LIMIT_Z = 6;
+      var ACCELERATION_LIMIT_X = 1;
+      var ACCELERATION_LIMIT_Y = 1;
+      var ACCELERATION_LIMIT_Z = 1;
+      var RADIUS_SCALE = 5;
       var MINIMAL_DISTANCE = 40;
 
       var latArr = [];
@@ -386,18 +390,18 @@
             var lat = current.position.lat + stepx * i;
             var lng = current.position.lng + stepy * i;
             
-            if (next.accelerations.X[i] > ACCELERATION_LIMIT_X){
-              var circleX = new google.maps.Circle(createCircle(lat,lng,next.accelerations.X[i],'red'));              
+            if (next.accelerations.X[i] > ACCELERATION_LIMIT_X){ 
+              var circleX = new google.maps.Circle(createCircle(lat,lng,next.accelerations.X[i] * RADIUS_SCALE,'red'));              
               //circleX.setMap(null);
               circles.push(circleX);
             }
             if (next.accelerations.Y[i] > ACCELERATION_LIMIT_Y){
-              var circleY = new google.maps.Circle(createCircle(lat,lng,next.accelerations.Y[i],'green'));
+              var circleY = new google.maps.Circle(createCircle(lat,lng,next.accelerations.Y[i] * RADIUS_SCALE,'green'));
               //circleY.setMap(null);
               circles.push(circleY);
             }
             if (next.accelerations.Z[i] > ACCELERATION_LIMIT_Z){
-              var circleZ = new google.maps.Circle(createCircle(lat,lng,next.accelerations.Z[i],'yellow'));                      
+              var circleZ = new google.maps.Circle(createCircle(lat,lng,next.accelerations.Z[i] * RADIUS_SCALE,'yellow'));                      
               //circleZ.setMap(null);
               circles.push(circleZ);
             }
@@ -433,6 +437,8 @@
             }*/
           }          
         }
+
+        console.log(circles)
 
         function addCircle(){
           

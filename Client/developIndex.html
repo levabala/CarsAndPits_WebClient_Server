@@ -31,6 +31,7 @@
           box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
           right: 0;
           z-index: 1;
+          white-space: nowrap;
       }
 
       .dropdown-content a {
@@ -218,6 +219,35 @@
       </div>
     </div>
     </div>
+
+        <!-- Prototypes changing -->
+    <script>
+      String.prototype.replaceAll = function(search, replacement) {
+        var target = this;
+        return target.replace(new RegExp(search, 'g'), replacement);
+      };
+
+      String.prototype.format = function() {
+          var args = arguments;
+          return this.replace(/{(\d+)}/g, function(match, number) { 
+            return typeof args[number] != 'undefined'
+              ? args[number]
+              : match
+            ;
+          });
+        };
+
+      Array.prototype.insertItem = function(item, index){
+        this = this.splice(index, 0, item);
+      }
+
+      if (!Array.prototype.last){
+        Array.prototype.last = function(){
+            return this[this.length - 1];
+        };
+      };
+    </script>
+
     <!-- Interface script -->
     <script>      
       var tracklistDom = document.getElementById("myDropdown");
@@ -272,7 +302,10 @@
             tracklistDom.innerHTML = "";        
             for (var t in tracks){
               if (tracks[t].length < 2) continue;
-              var a = createA(tracks[t]);          
+              var arr = tracks[t].split('|');
+              var name = arr[0];
+              var size = arr[1];
+              var a = createA(name,size);          
               tracklistDom.appendChild(a);
             }        
           }          
@@ -298,7 +331,7 @@
           else {        
             var track = JSON.parse(xhr.responseText);          
             makeJsonFloatAgain(track);
-            console.log(track)
+            //console.log(track)
             setupRoute(track);
             loadOff();
           }                            
@@ -307,39 +340,66 @@
         xhr.send();        
       }
 
-      function createA(trackName){
+      function createA(trackName, trackSize){        
+        var arr = trackName.split('.');
+        arr.pop(); //deleting ".json"
+
+        var temp = arr.join('.');
+
+        var arr2 = temp.split('_');
+        var owner = arr2[0];
+        var ymd = arr2[1];
+        var hmsms = arr2[2]; //hours minutes seconds milliseconds
+        
+        var arr3 = hmsms.split('.');
+        var hours = arr3[0];        
+        var minutes = arr3[1];
+        var seconds = arr3[2];
+        var ms = arr3[3];
+
+        if (hours[0] == '0') hours = hours.substring(1);
+        if (minutes[0] == '0') minutes = minutes.substring(1);
+        if (seconds[0] == '0') seconds = seconds.substring(1);
+        if (ms[0] == '0') ms = ms.substring(1);
+        if (ms[0] == '0') ms = ms.substring(1);
+
+        var str = "({0}) at {1} {2}h:{3}m:{4}s:{5}ms | {6}".toString().format(owner,ymd,hours,minutes,seconds,ms,trackSize);
+
         var a = document.createElement('a');
-        a.setAttribute('onclick','requestTrack(this.innerHTML)');
-        a.setAttribute('style','cursor: pointer');
-        a.innerHTML = trackName;
+        a.setAttribute('trackName',trackName);                
+        a.setAttribute('onclick','requestTrack(this.getAttribute("trackName"))');
+        a.setAttribute('style','cursor: pointer');        
+        a.innerHTML = str;      
         return a;
       }
     </script>
-    <script>           
+    <script>                 
       var map;      
       var zoomLayers = []; //from 0 to 20
        
       function initMap() {
         map = new google.maps.Map(document.getElementById('map'), {
           zoom: 15,
-          center: {lat: 56.7371593, lng: 37.163207},
+          center: {lat: 56.7449408, lng: 37.2092368},
           mapTypeId: 'satellite'
         });    
 
-        listenForIdleOnce();                  
+        listenForIdleOnce();                          
       }
 
 
       function setupRoute(track){
         if (track.length < 2) return;
 
-
+        var route = new GoogleRoute(track,map,loadOn,loadOff);        
       }
 
       function listenForIdleOnce(){
         google.maps.event.addListenerOnce(map, 'idle', function(){
           console.warn('idle')
-          loadOff();          
+          loadOff();         
+
+          requestTrack('192.168.3.11_2017-04-01_18.16.54.884.json|'); 
         });
       }
 
@@ -362,13 +422,13 @@
         //console.log(json)
       }
 
-      function measure(lat1, lon1, lat2, lon2){  // generally used geo measurement function
+      function measure(lat1, lng1, lat2, lng2){  // generally used geo measurement function
         var R = 6378.137; // Radius of earth in KM
         var dLat = lat2 * Math.PI / 180 - lat1 * Math.PI / 180;
-        var dLon = lon2 * Math.PI / 180 - lon1 * Math.PI / 180;
+        var dlng = lng2 * Math.PI / 180 - lng1 * Math.PI / 180;
         var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
         Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon/2) * Math.sin(dLon/2);
+        Math.sin(dlng/2) * Math.sin(dlng/2);
         var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         var d = R * c;
         return d * 1000; // meters
@@ -376,12 +436,158 @@
     </script>
 
     <!-- Some classes -->
-    <script>
-      function Route(track){
+    <script>      
+      function GoogleRoute(track, map, loadOn, loadOff){
         var route = this;
+
+        loadOn();
+
+        //Some constances
+        var MINIMAL_ACC_X = 2;
+        var MINIMAL_ACC_Y = 3;
+        var MINIMAL_ACC_Z = 6;
+        var MINIMAL_PIXELS_DISTANCE = 10;
+        var COLOR_X = 'red';
+        var COLOR_Y = 'green';
+        var COLOR_Z = 'yellow';
+        
+        //For maps
+        var OFFSET = 268435456;
+        var RADIUS = OFFSET / Math.PI;
+        
         this.track = track;
         this.zoomLayers = []; //from 0 to 20
-        
+        this.latArray = [];
+        this.lngArray = [];
+        this.roadWay = [];
+        this.accelerationPoints = {
+          X: [],
+          Y: [],
+          Z: []
+        }
+
+        //console.log('Track:',track);
+
+        //track processing
+        setTimeout(function(){ //async :)
+          var zeroLayer = new Layer();                    
+
+          for (var t = 0; t < track.length-1; t++){
+            var current = track[t];
+            var next = track[t+1];
+
+            route.roadWay.push(next.position);
+
+            var stepx = (next.position.lat - current.position.lat) / next.accelerations.X.length; 
+            var stepy = (next.position.lng - current.position.lng) / next.accelerations.X.length; //not mistake here
+
+            var currDist = measure(current.position.lat,current.position.lng,next.position.lat,next.position.lng);
+            
+            for (var i in next.accelerations.X){            
+              var lat = current.position.lat + stepx * i;
+              var lng = current.position.lng + stepy * i;
+
+              var circleX,circleY,circleZ;
+              if (next.accelerations.X[i] > MINIMAL_ACC_X){
+                circleX = createCircle(lat,lng,next.accelerations.X[i], COLOR_X);
+                circleX.setMap(null);
+                zeroLayer.addCircle('X', circleX);
+              }
+              if (next.accelerations.Y[i] > MINIMAL_ACC_Y){
+                circleY = createCircle(lat,lng,next.accelerations.Y[i], COLOR_Y);
+                circleY.setMap(null);
+                zeroLayer.addCircle('Y', circleY);
+              }
+              if (next.accelerations.Z[i] > MINIMAL_ACC_Z){
+                circleZ = createCircle(lat,lng,next.accelerations.Z[i], COLOR_Z);            
+                circleZ.setMap(null);
+                zeroLayer.addCircle('Z', circleZ);
+              }
+            }            
+          }          
+          
+          route.zoomLayers = generateLayers(zeroLayer);
+
+          loadOff();
+
+          console.log(route)
+        }, 0);
+
+        function generateLayers(zeroLayer){
+          var output = [];
+          output.push(zeroLayer);
+
+          return output;
+        }
+
+        function createCircle(lat,lng,radius,color){
+          return new google.maps.Circle({
+            center: {lat: lat, lng: lng},
+            fillColor: color,
+            //fillOpacity: accDelta / maxAccDelta,
+            radius: radius,
+            scale: 1,//Math.pow(2, magnitude) / 2,
+            strokeColor: 'white',
+            strokeWeight: .2,
+            map: map
+          });
+        }
+
+        function lngToX(lng){
+          return round(OFFSET + RADIUS * lng * Math.PI / 180);
+        }
+        function latToX(lat){
+          return round(OFFSET - RADIUS * 
+                Math.log((1 + Math.sin(lat * Math.PI / 180)) / 
+                (1 - Math.sin(lat * Math.PI / 180))) / 2);
+        }
+        function pixelDistance(lat1, lng1, lat2, lng2, zoom) {
+          var x1 = lngToX(lng1);
+          var y1 = latToY(lat1);
+
+          var x2 = lngToX(lng2);
+          var y2 = latToY(lat2);
+              
+          return Math.sqrt(Math.pow((x1-x2),2) + Math.pow((y1-y2),2)) >> (21 - zoom);
+        }
+
+        function Layer(){
+          var layer = this;
+
+          var lastXIndex = 0;
+          var lastYIndex = 0;
+          var lastZIndex = 0;
+
+          this.X = {
+            array: [],
+            sortedByLat: [],
+            sortedByLng: []               
+          };
+          this.Y = {
+            array: [],
+            sortedByLat: [],
+            sortedByLng: []               
+          };
+          this.Z = {
+            array: [],
+            sortedByLat: [],
+            sortedByLng: []               
+          };
+
+          this.addCircle = function(axisName, circle){
+            var axis = layer[axisName];
+            var id = axis.array.length;
+            axis.array.push(circle);            
+            
+            if (circle.center.lat >= axis.array.last().center.lat)
+              axis.sortedByLat.push(id);
+            else if (circle.center.lat <= axis.array[0].center.lat)
+              axis.sortedByLat.insert(id);
+            else {
+
+            }
+          }          
+        }
       }
     </script>
     <script async defer

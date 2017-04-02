@@ -3,6 +3,18 @@ String.prototype.replaceAll = function(search, replacement) {
     return target.replace(new RegExp(search, 'g'), replacement);
 };
 
+if (!String.prototype.format) {
+  String.prototype.format = function() {
+    var args = arguments;
+    return this.replace(/{(\d+)}/g, function(match, number) { 
+      return typeof args[number] != 'undefined'
+        ? args[number]
+        : match
+      ;
+    });
+  };
+}
+
 var http = require('http');
 var url = require('url');
 var fs = require("fs");
@@ -11,6 +23,17 @@ var port = 3000;
 
 var clientPage = "";
 var developPage = "";
+var users = "";
+
+var usersCounter = 0;
+
+try{
+    var temp = fs.readFileSync("users.config",'utf-8');
+    usersCounter = temp.split('|').length;
+}
+catch(e){    
+    fs.writeFileSync("users.config","");
+}
 
 function updateHtml(){
     fs.readFile('../Client/index.html', function (err, html) {
@@ -60,8 +83,9 @@ var server = http.createServer(function (req, res) {
         }
         case '/getTrack': {
             var trackName = query.trackName;
+            console.log("Trying to get",trackName)
             fs.readFile('./Tracks/' + trackName, (err,track) => {
-                if (err) res.end(err);
+                if (err) res.end('Error');
                 else res.end(track);
             });          
             break;
@@ -147,11 +171,31 @@ function saveRoute(ip, date, route){
     if (seconds < 10) seconds = '0' + seconds;    
     if (milliseconds < 100) milliseconds = '00' + milliseconds;
     else if (milliseconds < 10) milliseconds = '0' + milliseconds;
+        
+    var name = getAndSetUser(ip);
 
-    console.log(year,month,day,hours,minutes,seconds,milliseconds)    
-    var id = ip + '_' + date.getTime()//+'_'+ip;
+    var id = "{0}_{1}-{2}-{3}_{4}.{5}.{6}.{7}".format(name,year,month,day,hours,minutes,seconds,milliseconds);
+    console.log("Saved as",id+'.json');
 
     fs.writeFile('./Tracks/'+id+'.json', JSON.stringify(arr), function(err){        
         if (err) console.log('ОШИБКА: ' + err);
-    });
+    });    
 }   
+
+function getAndSetUser(ip){    
+    var usersList = fs.readFileSync('users.config', 'utf-8').split('|');
+    usersList.pop();
+
+    console.log(usersList);
+
+    var users = [];        
+    for (var i in usersList){
+        var a = usersList[i].split(':');
+        console.log(a);
+        if (a[0] == ip) return a[1];
+    }
+
+    var name = 'user#' + usersList.length;
+    fs.appendFileSync('users.config', '{0}:{1}|'.format(ip,name));
+    return name;
+}
