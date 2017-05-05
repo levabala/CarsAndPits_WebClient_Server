@@ -82,6 +82,7 @@ var server = http.createServer(function (req, res) {
             break;
         }
         case '/getTrack': {
+	    console.log(query)
             var trackName = query.trackName;
             console.log("Trying to get",trackName)
             fs.readFile('./Tracks/' + trackName, (err,track) => {
@@ -195,7 +196,7 @@ function getAndSetUser(ip){
         if (a[0] == ip) return a[1];
     }
 
-    var name = 'user#' + usersList.length;
+    var name = 'user_N' + usersList.length;
     fs.appendFileSync('users.config', '{0}:{1}|'.format(ip,name));
     return name;
 }

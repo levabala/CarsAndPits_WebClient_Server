@@ -285,8 +285,10 @@
 
       function requestTrack(trackName){
         xhr = new XMLHttpRequest();
-        console.log(trackName,trackName.split('|')[0])
-        xhr.open('GET', '/getTrack?trackName='+trackName.split('|')[0], false);
+	var filename = trackName.split('|')[0];
+	console.log("filename:",filename);
+
+        xhr.open('GET', '/getTrack?trackName='+filename, false);
         
 
         loadOn();
