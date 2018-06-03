@@ -269,8 +269,8 @@
           if (xhr.status != 200) {
             // обработать ошибку
             console.log('Ошибка ' + xhr.status + ': ' + xhr.statusText);
-          } else {                    
-            var tracks = xhr.responseText.split(' ');
+          } else {                                
+            var tracks = xhr.responseText.split(' ');            
             tracklistDom.innerHTML = "";        
             for (var t in tracks){
               if (tracks[t].length < 2) continue;
@@ -299,7 +299,7 @@
             // обработать ошибку
             console.log('Ошибка ' + xhr.status + ': ' + xhr.statusText);
           } 
-          else {        
+          else {                    
             var track = JSON.parse(xhr.responseText);          
             makeJsonFloatAgain(track);
             console.log(track)
@@ -315,8 +315,7 @@
         var a = document.createElement('a');
         a.setAttribute('onclick','requestTrack(this.innerHTML)');
         a.setAttribute('style','cursor: pointer');
-        a.innerHTML = trackName;
-        console.log(trackName)
+        a.innerHTML = trackName;        
         return a;
       }
     </script>

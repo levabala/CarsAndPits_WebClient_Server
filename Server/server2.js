@@ -26,7 +26,9 @@ var developPage = "";
 var users = "";
 
 var usersCounter = 0;
-
+console.log(process.cwd())
+process.chdir('\Server');
+console.log(process.cwd())
 try{
     var temp = fs.readFileSync("users.config",'utf-8');
     usersCounter = temp.split('|').length;
@@ -86,17 +88,22 @@ var server = http.createServer(function (req, res) {
 	    console.log(query)
             var trackName = query.trackName;
             console.log("Trying to get",trackName)
-            fs.readFile('./Tracks/' + trackName, (err,track) => {
-                if (err) res.end('Error');
+            fs.readFile('../Tracks/' + trackName, (err,track) => {                
+                if (err) {
+                    console.log(err)
+                    res.statusCode = 200;
+                    res.end('Error');
+                }
                 else res.end(track);
             });          
             break;
         }
-        case '/getTracksList': {
-            fs.readdir('./Tracks/', (err, files) => {
+        case '/getTracksList': {            
+            fs.readdir('../Tracks/', (err, files) => {
+                console.log(files)
                 var str = "";
                 for (var f in files)
-                    str += files[f] + '|' + (fs.statSync('./Tracks/' + files[f]).size / 1000000).toFixed(1) + 'MB ';
+                    str += files[f] + '|' + (fs.statSync('../Tracks/' + files[f]).size / 1000000).toFixed(1) + 'MB ';
                 res.end(str) 
             })
             break;
@@ -115,7 +122,7 @@ var server = http.createServer(function (req, res) {
         }               
     }
     //res.end("I'am on");
-}).listen(port, "192.168.3.6");
+}).listen(port, "127.0.0.1");
 
 function saveRoute(ip, date, route){
     console.log(route);

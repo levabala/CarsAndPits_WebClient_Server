@@ -36,12 +36,12 @@ catch(e){
 }
 
 function updateHtml(){
-    fs.readFile('../Client/index.html', function (err, html) {
+    fs.readFile('./Client/index.html', function (err, html) {
         if (err) 
             throw err;             
         clientPage = html;
     });
-    fs.readFile('../Client/developIndex.html', function (err, html) {
+    fs.readFile('./Client/developIndex.html', function (err, html) {
         if (err) 
             throw err;             
         developPage = html;
@@ -114,7 +114,7 @@ var server = http.createServer(function (req, res) {
         }               
     }
     //res.end("I'am on");
-}).listen(port, "192.168.3.6");
+}).listen(port, "127.0.0.1");
 
 function saveRoute(ip, date, route){
     var arr = [];
