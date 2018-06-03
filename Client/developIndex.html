@@ -238,7 +238,7 @@
         };
 
       Array.prototype.insertItem = function(item, index){
-        this = this.splice(index, 0, item);
+        this.splice( index, 0, item );    
       }
 
       if (!Array.prototype.last){
@@ -342,6 +342,7 @@
 
       function createA(trackName, trackSize){        
         var arr = trackName.split('.');
+        console.log(arr)
         arr.pop(); //deleting ".json"
 
         var temp = arr.join('.');
